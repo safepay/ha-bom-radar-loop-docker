@@ -1,0 +1,4 @@
+Pillow
+pytz
+smbprotocol
+pyyaml

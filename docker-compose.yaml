@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  radar-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: radar-downloader:latest
+    container_name: radar-downloader
+    restart: unless-stopped
+    
+    volumes:
+      # Config file - edit this to change settings
+      - /volume1/docker/weather_gif/config.yaml:/app/config.yaml:ro
+      # Legend image
+      - /volume1/docker/weather_gif/IDR.legend.0.png:/IDR.legend.0.png:ro
+      # Output directory
+      - /volume1/docker/weather_gif/images:/images
+    
+    # environment:
+      # Optional: Override config values with environment variables
+      # - UPDATE_INTERVAL=600
+      # - LOG_LEVEL=INFO
+      # - PRODUCT_ID=IDR022
+      # - TIMEZONE=Australia/Melbourne
+      
+      # Optional: Keep credentials out of config file
+      # - SMB_USERNAME=username
+      # - SMB_PASSWORD=password
+    
+    # Enable TTY for better logging
+    tty: true
+    stdin_open: true
+    
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

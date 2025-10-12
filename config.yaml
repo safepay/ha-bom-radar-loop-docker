@@ -1,0 +1,42 @@
+# Radar Configuration
+radar:
+  product_id: IDR952
+  timezone: Australia/Melbourne
+
+# Scheduler Configuration
+scheduler:
+  enabled: true
+  update_interval: 600  # Seconds between updates (600 = 10 minutes)
+  retry_on_error: true
+  retry_interval: 60    # Seconds to wait before retry on error
+
+# SMB Share Configuration
+smb:
+  server: 192.168.1.95
+  share: config
+  username: username  # Or use environment variable
+  password: password  # Or use environment variable
+  remote_path: /www/weather_gif
+
+# Radar Layers
+layers:
+  - background
+#  - catchments
+#  - topography
+  - locations
+
+# Output Configuration
+output:
+  directory: /images
+  animated_gif: radar_animated.gif
+  timestamp_file: radar_last_update.txt
+  legend_file: /IDR.legend.0.png
+
+# GIF Settings
+gif:
+  duration: 500  # Milliseconds per frame
+  loop: 0        # 0 = infinite loop
+
+# Logging
+logging:
+  level: INFO  # DEBUG, INFO, WARNING, ERROR
