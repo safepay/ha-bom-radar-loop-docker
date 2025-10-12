@@ -1,4 +1,4 @@
-# ha-bom-radar-loop-docker
+# Home Assistant Australian BoM Radar Loop Creator in Docker
 Docker container for Home Assistant BoM Radar Loop plus individual radar images to enable use in LLM Vision
 
 The Home Assitant LLM Vision analyser requires separate radar images to process when looking for storm events.
