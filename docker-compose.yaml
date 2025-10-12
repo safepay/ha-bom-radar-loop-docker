@@ -5,17 +5,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: radar-downloader:latest
-    container_name: radar-downloader
+    image: bom-radar-downloader:latest
+    container_name: bom-radar-downloader
     restart: unless-stopped
     
     volumes:
       # Config file - edit this to change settings
-      - /volume1/docker/weather_gif/config.yaml:/app/config.yaml:ro
+      - /volume1/docker/bom_radar_downloader/config.yaml:/app/config.yaml:ro
       # Legend image
-      - /volume1/docker/weather_gif/IDR.legend.0.png:/IDR.legend.0.png:ro
+      - /volume1/docker/bom_radar_downloader/IDR.legend.0.png:/IDR.legend.0.png:ro
       # Output directory
-      - /volume1/docker/weather_gif/images:/images
+      - /volume1/docker/bom_radar_downloader/images:/images
     
     # environment:
       # Optional: Override config values with environment variables
@@ -36,4 +36,5 @@ services:
       driver: json-file
       options:
         max-size: "10m"
+
         max-file: "3"
