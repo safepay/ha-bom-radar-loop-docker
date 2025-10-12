@@ -12,4 +12,5 @@ COPY radar_downloader.py ./
 # Ensure Python output is unbuffered
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "-u", "radar_downloader.py"]
+
+CMD ["python", "-u", "bom_radar_downloader.py"]
