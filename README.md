@@ -17,8 +17,10 @@ Create the following directory structure somewhere on the machine where you run 
 ├── Dockerfile
 ├── requirements.txt
 ├── bom_radar_downloader.py
+├── radar_metadata.py
 ├── config.yaml
 ├── IDR.legend.0.png
+├── home-circle-dark.png
 └── images/  (created automatically)
 ```
 
