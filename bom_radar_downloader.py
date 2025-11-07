@@ -157,7 +157,8 @@ class RadarProcessor:
         """Get radar center coordinates and scale from product ID
 
         Retrieves metadata from the radar_metadata module which contains
-        information for all Australian BOM radars.
+        information for all Australian BOM radars. Config overrides take
+        precedence over metadata values.
 
         Returns:
             tuple: (latitude, longitude, km_per_pixel)
@@ -165,12 +166,27 @@ class RadarProcessor:
         # Default values if product ID not found
         default_metadata = (0, 0, 1.0)
 
+        # Get base metadata from radar_metadata module
         metadata = RADAR_METADATA.get(product_id, default_metadata)
         if product_id not in RADAR_METADATA:
             logging.warning(f"Radar metadata not found for {product_id}. Using defaults. "
                           f"House marker may not be accurately positioned.")
 
-        return metadata
+        # Check for config overrides
+        radar_config = self.config.get('radar', {})
+        override_lat = radar_config.get('latitude')
+        override_lon = radar_config.get('longitude')
+        override_km_per_pixel = radar_config.get('km_per_pixel')
+
+        # Apply overrides if provided (and not None/null)
+        lat = override_lat if override_lat is not None else metadata[0]
+        lon = override_lon if override_lon is not None else metadata[1]
+        km_per_pixel = override_km_per_pixel if override_km_per_pixel is not None else metadata[2]
+
+        if override_lat is not None or override_lon is not None or override_km_per_pixel is not None:
+            logging.info(f"Using radar coordinate overrides: lat={lat}, lon={lon}, km_per_pixel={km_per_pixel}")
+
+        return (lat, lon, km_per_pixel)
 
     def latlon_to_pixel(self, lat, lon, radar_lat, radar_lon, km_per_pixel, image_size):
         """Convert latitude/longitude to pixel coordinates on radar image

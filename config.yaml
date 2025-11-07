@@ -2,6 +2,20 @@
 radar:
   product_id: IDR952  # Change this to your BoM Product ID
   timezone: Australia/Melbourne # Change this to your timezone
+  # Optional: Override radar center coordinates (for composite/rainbow radars)
+  # Uncomment and set these if your home marker appears in the wrong location
+  # This is needed for some composite radars where the image isn't centered on the radar station
+  #
+  # To find the correct values:
+  # 1. Enable residential_location below and set your home coordinates
+  # 2. Generate a radar image and note where your home marker appears
+  # 3. If it's too far east/west/north/south, adjust these coordinates in the opposite direction
+  # 4. Each 1 degree ≈ 111km north/south, ≈ 89km east/west (at -37° latitude)
+  #
+  # Example for Melbourne area with Rainbow radar:
+  # latitude: -37.0    # Try values between -36.0 and -38.0
+  # longitude: 143.5   # Try values between 142.0 and 145.0
+  # km_per_pixel: 2.0  # Should match your product_id (512km=4.0, 256km=2.0, 128km=1.0, 64km=0.5)
 
 # Residential Location Marker (Optional)
 # Adds a small house icon to the radar loop at the specified location
