@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 import pytz
 import yaml
+import math
+from radar_metadata import RADAR_METADATA
 
 VERSION = '1.0.0'
 
@@ -51,6 +53,7 @@ class Config:
         output = config.get('output', {})
         gif = config.get('gif', {})
         log_config = config.get('logging', {})
+        residential = config.get('residential_location', {})
         
         return {
             # Radar settings
@@ -85,6 +88,11 @@ class Config:
             
             # Logging
             'log_level': os.getenv('LOG_LEVEL', log_config.get('level', 'INFO')).upper(),
+
+            # Residential location marker
+            'residential_enabled': residential.get('enabled', False),
+            'residential_lat': residential.get('latitude'),
+            'residential_lon': residential.get('longitude'),
         }
 
 
@@ -102,7 +110,7 @@ class RadarProcessor:
     def load_legend(self):
         """Load the legend image"""
         legend_path = self.config['legend_file']
-        
+
         if os.path.exists(legend_path):
             legend_image = Image.open(legend_path).convert('RGBA')
             logging.info(f"Loaded legend image: {legend_path} - Size: {legend_image.size}")
@@ -110,6 +118,135 @@ class RadarProcessor:
         else:
             logging.warning(f"Legend image not found at {legend_path}")
             return None
+
+    def load_house_icon(self):
+        """Load house icon from PNG file
+
+        Returns:
+            PIL Image object with RGBA mode, or None if not found
+        """
+        try:
+            # Check multiple possible locations for the icon
+            possible_paths = [
+                '/app/home-circle-dark.png',
+                'home-circle-dark.png',
+                os.path.join(os.path.dirname(__file__), 'home-circle-dark.png')
+            ]
+
+            icon_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    icon_path = path
+                    break
+
+            if icon_path is None:
+                logging.error(f"House icon PNG file not found. Tried: {possible_paths}")
+                return None
+
+            # Load PNG directly with PIL
+            icon = Image.open(icon_path).convert('RGBA')
+
+            logging.debug(f"Loaded house icon from {icon_path}: {icon.size}")
+            return icon
+
+        except Exception as e:
+            logging.error(f"Error loading house icon: {e}")
+            return None
+
+    def get_radar_metadata(self, product_id):
+        """Get radar center coordinates and scale from product ID
+
+        Retrieves metadata from the radar_metadata module which contains
+        information for all Australian BOM radars.
+
+        Returns:
+            tuple: (latitude, longitude, km_per_pixel)
+        """
+        # Default values if product ID not found
+        default_metadata = (0, 0, 1.0)
+
+        metadata = RADAR_METADATA.get(product_id, default_metadata)
+        if product_id not in RADAR_METADATA:
+            logging.warning(f"Radar metadata not found for {product_id}. Using defaults. "
+                          f"House marker may not be accurately positioned.")
+
+        return metadata
+
+    def latlon_to_pixel(self, lat, lon, radar_lat, radar_lon, km_per_pixel, image_size):
+        """Convert latitude/longitude to pixel coordinates on radar image
+
+        This uses a simple approximation assuming the radar image is centered
+        on the radar location and uses a linear projection.
+        """
+        # Earth's radius in km
+        R = 6371.0
+
+        # Convert to radians
+        lat1 = math.radians(radar_lat)
+        lon1 = math.radians(radar_lon)
+        lat2 = math.radians(lat)
+        lon2 = math.radians(lon)
+
+        # Calculate distance in km using Haversine formula
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+
+        # For small distances, we can use a simpler approximation
+        # Distance in km (north is positive)
+        dy = dlat * R
+        # Distance in km (east is positive)
+        dx = dlon * R * math.cos(lat1)
+
+        # Convert km to pixels
+        # Image center is at image_size / 2
+        center_x = image_size[0] // 2
+        center_y = image_size[1] // 2
+
+        # Calculate pixel position
+        # Note: y increases downward in images, so we subtract dy
+        pixel_x = center_x + int(dx / km_per_pixel)
+        pixel_y = center_y - int(dy / km_per_pixel)
+
+        logging.debug(f"Converted ({lat}, {lon}) to pixel ({pixel_x}, {pixel_y})")
+        logging.debug(f"Offset from radar: dx={dx:.2f}km, dy={dy:.2f}km")
+
+        return (pixel_x, pixel_y)
+
+    def add_house_marker(self, frame, house_icon):
+        """Add house icon to a radar frame at the configured residential location"""
+        if not self.config['residential_enabled']:
+            return frame
+
+        lat = self.config['residential_lat']
+        lon = self.config['residential_lon']
+
+        if lat is None or lon is None:
+            logging.warning("Residential location enabled but coordinates not provided")
+            return frame
+
+        # Get radar metadata
+        product_id = self.config['product_id']
+        radar_lat, radar_lon, km_per_pixel = self.get_radar_metadata(product_id)
+
+        # Convert lat/lon to pixel coordinates
+        pixel_x, pixel_y = self.latlon_to_pixel(
+            lat, lon, radar_lat, radar_lon, km_per_pixel, frame.size
+        )
+
+        # Check if coordinates are within image bounds
+        icon_size = house_icon.size[0]
+        if (0 <= pixel_x < frame.size[0] and 0 <= pixel_y < frame.size[1]):
+            # Calculate position to center the icon on the coordinates
+            paste_x = pixel_x - icon_size // 2
+            paste_y = pixel_y - icon_size // 2
+
+            # Paste the house icon onto the frame
+            frame.paste(house_icon, (paste_x, paste_y), house_icon)
+            logging.debug(f"Added house marker at pixel ({pixel_x}, {pixel_y})")
+        else:
+            logging.warning(f"Residential location ({lat}, {lon}) is outside radar image bounds")
+
+        return frame
     
     def get_timestamp(self, filename):
         """Extract timestamp from filename for sorting"""
@@ -154,16 +291,26 @@ class RadarProcessor:
         """Main processing function"""
         self.frames = []
         self.saved_filenames = []
-        
+
         product_id = self.config['product_id']
-        
+
         try:
             # Load the legend image as the base
             base_image = self.load_legend()
-            
+
             if base_image is None:
                 logging.error("Cannot proceed without legend image")
                 return False
+
+            # Load house icon if residential location is enabled
+            house_icon = None
+            if self.config['residential_enabled']:
+                house_icon = self.load_house_icon()
+                if house_icon:
+                    logging.info(f"Residential location marker enabled at "
+                               f"({self.config['residential_lat']}, {self.config['residential_lon']})")
+                else:
+                    logging.warning("Could not load house icon, marker will be disabled")
             
             # Connect to FTP server
             logging.info("Connecting to BOM FTP server...")
@@ -225,25 +372,36 @@ class RadarProcessor:
                 logging.error("No frames were processed")
                 return False
             
-            # Save individual PNG images
+            # Save individual PNG images (without house marker)
             for i, img in enumerate(self.frames):
                 filename = f"image_{i+1}.png"
                 filepath = os.path.join(self.config['output_directory'], filename)
                 img.save(filepath)
                 self.saved_filenames.append(filename)
                 logging.debug(f"Saved {filepath}")
-            
+
             logging.info(f"Saved {len(self.saved_filenames)} PNG images")
-            
+
+            # Create GIF frames with house marker (if enabled)
+            gif_frames = []
+            if house_icon is not None:
+                logging.info("Adding house markers to GIF frames only")
+                for frame in self.frames:
+                    gif_frame = frame.copy()
+                    gif_frame = self.add_house_marker(gif_frame, house_icon)
+                    gif_frames.append(gif_frame)
+            else:
+                gif_frames = self.frames
+
             # Save animated GIF
             gif_filepath = os.path.join(
                 self.config['output_directory'],
                 self.config['animated_gif_filename']
             )
-            self.frames[0].save(
+            gif_frames[0].save(
                 gif_filepath,
                 save_all=True,
-                append_images=self.frames[1:],
+                append_images=gif_frames[1:],
                 duration=self.config['gif_duration'],
                 loop=self.config['gif_loop'],
                 optimize=False

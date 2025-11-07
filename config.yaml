@@ -3,6 +3,15 @@ radar:
   product_id: IDR952  # Change this to your BoM Product ID
   timezone: Australia/Melbourne # Change this to your timezone
 
+# Residential Location Marker (Optional)
+# Adds a small house icon to the radar loop at the specified location
+# Leave commented out or remove to disable
+residential_location:
+  enabled: false  # Set to true to enable the house marker
+  latitude: -37.8136  # Your home latitude
+  longitude: 144.9631  # Your home longitude
+  # Note: The house icon will only appear on the animated radar loop, not on static images
+
 # Scheduler Configuration - can be left untouched
 scheduler:
   enabled: true
