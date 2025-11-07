@@ -26,6 +26,6 @@ Create the following directory structure somewhere on the machine where you run 
 
 Edit the `config.yaml` file to suit your requirements. The intructions are in the file on what to change.
 
-On your Home Assistant create a folder under `/config/www` as per your config file in the `SMB Share Configuration` section.
+On your Home Assistant create a `images` folder under `/config/www` as per your config file in the `Output Configuration` section.
 
 Then build and run as required by Docker.
