@@ -6,12 +6,13 @@ import os
 import sys
 import asyncio
 import logging
-from PIL import Image, ImageDraw
+from PIL import Image
 from datetime import datetime
 from pathlib import Path
 import pytz
 import yaml
 import math
+import cairosvg
 from radar_metadata import RADAR_METADATA
 
 VERSION = '1.0.0'
@@ -119,52 +120,51 @@ class RadarProcessor:
             logging.warning(f"Legend image not found at {legend_path}")
             return None
 
-    def create_house_icon(self, size=20):
-        """Create a simple black and white house icon"""
-        # Create a new transparent image
-        icon = Image.new('RGBA', (size, size), (0, 0, 0, 0))
-        draw = ImageDraw.Draw(icon)
+    def load_house_icon(self, icon_path='/app/home-circle-dark.svg', size=32):
+        """Load house icon from SVG file and convert to PIL Image
 
-        # Calculate proportions
-        wall_height = int(size * 0.5)
-        roof_height = int(size * 0.35)
-        wall_top = size - wall_height
-        roof_top = wall_top - roof_height
+        Args:
+            icon_path: Path to the SVG icon file
+            size: Target size for the icon (will scale proportionally)
 
-        # Draw the roof (triangle)
-        roof_points = [
-            (size // 2, roof_top),  # Top point
-            (2, wall_top),  # Left bottom
-            (size - 2, wall_top)  # Right bottom
-        ]
-        draw.polygon(roof_points, fill='black', outline='black')
+        Returns:
+            PIL Image object with RGBA mode
+        """
+        try:
+            # Check multiple possible locations for the icon
+            possible_paths = [
+                icon_path,
+                '/app/home-circle-dark.svg',
+                'home-circle-dark.svg',
+                os.path.join(os.path.dirname(__file__), 'home-circle-dark.svg')
+            ]
 
-        # Draw the walls (rectangle)
-        wall_left = 2
-        wall_right = size - 2
-        draw.rectangle(
-            [wall_left, wall_top, wall_right, size - 2],
-            fill='white',
-            outline='black',
-            width=1
-        )
+            svg_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    svg_path = path
+                    break
 
-        # Draw a door
-        door_width = int(size * 0.25)
-        door_height = int(size * 0.3)
-        door_left = (size - door_width) // 2
-        door_right = door_left + door_width
-        door_top = size - 2 - door_height
-        draw.rectangle(
-            [door_left, door_top, door_right, size - 2],
-            fill='black'
-        )
+            if svg_path is None:
+                logging.error(f"House icon SVG file not found. Tried: {possible_paths}")
+                return None
 
-        # Add a white border around the entire icon for visibility
-        draw.rectangle([0, 0, size-1, size-1], outline='white', width=2)
+            # Convert SVG to PNG bytes
+            png_data = cairosvg.svg2png(
+                url=svg_path,
+                output_width=size,
+                output_height=size
+            )
 
-        logging.debug(f"Created house icon: {size}x{size} pixels")
-        return icon
+            # Load PNG bytes into PIL Image
+            icon = Image.open(io.BytesIO(png_data))
+
+            logging.debug(f"Loaded house icon from {svg_path}: {icon.size}")
+            return icon
+
+        except Exception as e:
+            logging.error(f"Error loading house icon: {e}")
+            return None
 
     def get_radar_metadata(self, product_id):
         """Get radar center coordinates and scale from product ID
@@ -315,12 +315,15 @@ class RadarProcessor:
                 logging.error("Cannot proceed without legend image")
                 return False
 
-            # Create house icon if residential location is enabled
+            # Load house icon if residential location is enabled
             house_icon = None
             if self.config['residential_enabled']:
-                house_icon = self.create_house_icon(size=20)
-                logging.info(f"Residential location marker enabled at "
-                           f"({self.config['residential_lat']}, {self.config['residential_lon']})")
+                house_icon = self.load_house_icon(size=32)
+                if house_icon:
+                    logging.info(f"Residential location marker enabled at "
+                               f"({self.config['residential_lat']}, {self.config['residential_lon']})")
+                else:
+                    logging.warning("Could not load house icon, marker will be disabled")
             
             # Connect to FTP server
             logging.info("Connecting to BOM FTP server...")

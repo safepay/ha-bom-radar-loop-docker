@@ -2,3 +2,4 @@ Pillow
 pytz
 smbprotocol
 pyyaml
+cairosvg

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer white circle for visibility -->
+  <circle cx="16" cy="16" r="15" fill="white" stroke="black" stroke-width="1"/>
+
+  <!-- Inner circle background -->
+  <circle cx="16" cy="16" r="13" fill="#2c2c2c"/>
+
+  <!-- House icon -->
+  <!-- Roof -->
+  <path d="M 16 8 L 10 13 L 22 13 Z" fill="white"/>
+
+  <!-- House body -->
+  <rect x="11" y="13" width="10" height="9" fill="white"/>
+
+  <!-- Door -->
+  <rect x="14" y="17" width="4" height="5" fill="#2c2c2c"/>
+
+  <!-- Window -->
+  <rect x="12" y="15" width="2" height="2" fill="#2c2c2c"/>
+  <rect x="18" y="15" width="2" height="2" fill="#2c2c2c"/>
+</svg>
