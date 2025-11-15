@@ -52,3 +52,6 @@ To enable:
 
 ### Residential Location Marker (Optional)
 Add a house icon to show your location on the radar loop. Configure in `config.yaml` under `residential_location`.
+
+### Configurable Last Frame Pause
+The final frame in the animated GIF can pause longer before the loop restarts, making it easier to see the most recent radar data. Configure `gif.last_frame_duration` in `config.yaml` (default: 1000ms).

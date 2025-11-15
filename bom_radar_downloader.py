@@ -85,6 +85,7 @@ class Config:
             
             # GIF settings
             'gif_duration': int(os.getenv('GIF_DURATION', gif.get('duration', 500))),
+            'gif_last_frame_duration': int(os.getenv('GIF_LAST_FRAME_DURATION', gif.get('last_frame_duration', 1000))),
             'gif_loop': int(os.getenv('GIF_LOOP', gif.get('loop', 0))),
             
             # Logging
@@ -602,16 +603,24 @@ class RadarProcessor:
                 self.config['output_directory'],
                 self.config['animated_gif_filename']
             )
+
+            # Create duration list with longer pause on last frame
+            num_frames = len(gif_frames)
+            frame_durations = [self.config['gif_duration']] * num_frames
+            if num_frames > 0:
+                frame_durations[-1] = self.config['gif_last_frame_duration']
+                logging.debug(f"GIF frame durations: {frame_durations}")
+
             gif_frames[0].save(
                 gif_filepath,
                 save_all=True,
                 append_images=gif_frames[1:],
-                duration=self.config['gif_duration'],
+                duration=frame_durations,
                 loop=self.config['gif_loop'],
                 optimize=False
             )
             self.saved_filenames.append(self.config['animated_gif_filename'])
-            logging.info(f"Saved animated GIF: {gif_filepath}")
+            logging.info(f"Saved animated GIF: {gif_filepath} ({num_frames} frames, last frame pauses for {self.config['gif_last_frame_duration']}ms)")
             
             # Extract timestamp from last radar file
             timestamp_content = self.parse_timestamp(files[-1]) if files else None
