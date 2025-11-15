@@ -284,8 +284,9 @@ class RadarProcessor:
     def make_timestamp_transparent(self, image):
         """Make timestamp text at bottom of image transparent while preserving radar pixels
 
-        This removes the timestamp text by targeting the black (RGB 0,0,0) background
-        that BOM uses for timestamps, while leaving colored radar data intact.
+        BOM radar images have timestamp text in pure black (RGB 0,0,0) at the bottom.
+        The background is already transparent. This function removes only the black text
+        while preserving any colored radar data that may overlay the timestamp area.
 
         Args:
             image: PIL Image object in RGBA mode
@@ -297,22 +298,22 @@ class RadarProcessor:
         width, height = img.size
         pixels = img.load()
 
-        # The timestamp is typically in the bottom ~20 pixels
+        # The timestamp text is in the bottom ~20 pixels
         timestamp_region_height = 20
         start_y = max(0, height - timestamp_region_height)
 
-        # Target pure black (RGB 0,0,0) which is used for timestamp background
-        # BOM radar images use this color exclusively for the timestamp area
+        # Target pure black (RGB 0,0,0) timestamp text
+        # Radar data is never this color, so we can safely remove it
         for y in range(start_y, height):
             for x in range(width):
                 r, g, b, a = pixels[x, y]
 
-                # Make pure black pixels transparent (RGB values all 0)
-                # Allow slight tolerance for compression artifacts
+                # Make black pixels transparent (timestamp text)
+                # Allow slight tolerance (≤2) for compression artifacts
                 if r <= 2 and g <= 2 and b <= 2:
                     pixels[x, y] = (0, 0, 0, 0)  # Make transparent
 
-        logging.debug(f"Made timestamp (RGB 0,0,0) transparent in bottom {timestamp_region_height}px of image {img.size}")
+        logging.debug(f"Made timestamp text (RGB 0,0,0) transparent in bottom {timestamp_region_height}px of image {img.size}")
         return img
 
     def calculate_radar_offset(self, primary_product_id, secondary_product_id):
